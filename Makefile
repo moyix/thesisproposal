@@ -1,7 +1,7 @@
 # Set this to one or more main LaTeX files (e.g. those with \documentclass)
 # for a specific build. Leave blank to build all files having an uncommented
 # \documentclass.
-MAIN=auto-re.tex data-management-plan.tex collaboration-plan.tex personnel.tex collaborators.tex bio-kirda.tex bio-wkr.tex facilities.tex
+MAIN=
 
 
 ###########################################################################
@@ -81,8 +81,7 @@ die_unsupported:
 	$(warning  <BLANK> all pdf $(TARGET) clean)
 	$(error Exiting)
 
-#LATEX=	pdflatex #--interaction batchmode
-LATEX= xelatex
+LATEX=	pdflatex #--interaction batchmode
 TARGET=	$(MAIN:.tex=.pdf)
 
 # 9 Dec 2008 JG: This is now a worklist algorithm to pick up all recursive
