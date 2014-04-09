@@ -1,6 +1,8 @@
 \documentclass{article}
+\usepackage{url}
 
-\title{Dynamic Analyses for Understanding Closed-Source Software \\
+\title{Understanding and Protecting Closed-Source Software through Dynamic Analysis \\
+\vspace {1em}
 \large PhD Dissertation Proposal}
 
 \author{Brendan Dolan-Gavitt}
@@ -9,5 +11,228 @@
 \begin{document}
 
 \maketitle
+
+\begin{abstract}
+
+In order to evaluate the security properties of a system, it is
+typically necessary to intimately understand its internal operation. For
+systems where source and documentation are not available, this task
+requires time-consuming and expensive manual reverse engineering. In
+this proposal, I propose to investigate the use of dynamic program
+analyses to uncover undocumented assumptions and operating principles of
+real-world, closed-source systems. In particular, I will describe and
+evaluate dynamic analyses to identify enforced kernel data structure
+invariants, perform whole-system subprogram extraction for virtual
+machine introspection, locate interesting hook points in an OS and its
+applications, and automatically produce high-level summaries of system
+execution traces.
+
+\end{abstract}
+
+\section {Introduction}
+
+
+
+\subsection{Thesis Statement}
+
+The goal of this thesis is to better understand how large, real-world
+systems can be protected without cooperation from code providers. I hope
+to investigate how dynamic analysis can be used to efficiently
+understand the behavior and security properties of such systems.
+
+\section {Completed Work}
+
+In \textbf{Robust Signatures for Kernel Data
+Structures}~\cite{dolangavitt2009dssig}, I developed techniques for
+probing the invariants enforced on kernel-mode data structures. These
+structures represent objects of significant interest from a security
+perspective, as they include files, processes, threads, and network
+connections. Because of this, tools often locate kernel objects by
+scanning memory using invariants on data structure fields. However, this
+strategy only works if the invariants are \emph{enforced}---if an
+attacker can manipulate the data in an object, they can hide it from
+scans and evade detection. Indeed, I found that the invariants that
+were checked by memory scanners were rarely enforced by the kernel,
+presenting many opportunities for attackers to hide. To correct this
+situation I created a novel dynamic analysis that combines
+\emph{profiling} (checking how often each field in a structure was
+accessed by the operating system) with \emph{fuzzing} (actively making
+changes to the structure fields and observing the OS's response) to find
+out which fields are strictly checked by the OS. Finally, we generated
+new, \emph{robust} signatures by finding invariants on precisely those
+fields that were most strictly checked by the kernel itself, and that an
+attacker would have the most difficulty in tampering with. Our robust
+signatures effectively resist evasion even by powerful adversaries that
+have the ability to manipulate dynamic kernel data and make it
+impossible for attackers to hide objects from memory scans.
+
+I have also made significant contributions to the field of
+\emph{virtualization security}. In this area, the goal is to
+harden systems against attack by separating security software from the
+systems they are meant to protect by placing them into separate virtual
+machines (typically referred to as the \emph{security} and \emph{guest}
+virtual machines, respectively), with a small and verifiable hypervisor
+ensuring the isolation between the two. Thus, even if the operating
+system running inside the VM is compromised, hypervisor-level monitoring
+will remain secure and will be able to respond to the attack
+effectively. A key challenge in this area is the \emph{semantic gap}:
+although the separation between the two virtual machines means that
+tools in the security VM are resistant to tampering, visibility
+into the guest VM is greatly reduced. Virtualization security tools are
+presented with a low-level view of the guest VM that is typically
+limited to the contents of RAM and the CPU registers, but to make
+effective security decisions they need information about high-level OS
+concepts such as processes, threads, files, and network connections.
+Thus, virtualization security tools must painstakingly reconstruct
+a high-level view from this low-level data, which requires deep
+understanding of the algorithms and data structures of the OS and
+applications running in the guest VM. Worse, in the case of
+closed-source operating systems this understanding can only be derived
+by time-consuming and expensive manual reverse engineering of the binary
+code. The semantic gap therefore poses a significant obstacle to the
+development and deployment of virtualization security.
+
+In \textbf{Virtuoso: Narrowing the Semantic Gap in Virtual Machine
+Introspection}~\cite{dolangavitt2011virtuoso}, I made the first
+significant progress on the semantic gap problem in virtualization
+security. The critical insight is that the operating system must already
+contain code that does the work of ``parsing'' out low-level data into
+higher-level abstractions---after all, this is precisely how
+public-facing APIs and system administration tools work. To capitalize
+on this idea, I developed novel techniques (based on \emph{dynamic
+program slicing}) that analyze whole-system execution traces of programs
+performing tasks such as listing processes, extract out just the code
+that computes the list of processes, and then transforms it into a
+program that perform the same task with access only to a physical
+memory image and CPU state. This work made virtualization-based security
+monitors practical by transforming a manual process that required weeks
+of expert manual effort into one that needs just a few minutes of
+computation time.
+
+A related problem arises when considering virtualized security systems
+that need to do more than passive monitoring of a system. In cases where
+an intrusion detection system such as antivirus software must receive
+notification when certain events happen such as a file being opened or a
+URL being visited in a web browser, careful analysis of the guest
+operating system is needed to determine where to interpose. As with the
+semantic gap problem, this once required many painstaking hours with a
+disassembler to locate the functions (often private and undocumented)
+that corresponded to the event of interest. In \textbf{Tappan Zee
+(North) Bridge: Mining Memory Accesses for
+Introspection}~\cite{dolangavitt2013tzb}, I found that by grouping the
+memory accesses made by a system according to the code that generated
+them, it was possible to apply techniques from information retrieval and
+machine learning to locate code that corresponded to events of security
+interest. This allowed us to quickly find points at which to interpose
+on a system for security monitoring on five operating systems and two
+processor architectures with no reverse engineering required. This work
+was also the first to consider program analysis as a ``big data''
+question, where executing code generates reams of data that can then be
+aggregated and searched for patterns of interest.
+
+\section {Proposed Future Work: \\
+Automatically Summarizing Execution}
+
+Existing work on reverse engineering binary code has typically focused
+on decompilation~\cite{schwartz:2013:decomp,cifuentes:1995:decomp}.
+However, for quickly understanding the behavior and capabilities of a
+program, source code may not be the most efficient representation.
+Instead, one may desire \emph{semantically meaningful summaries} of
+parts of a program or execution trace. For example, portions of an
+execution might be summarized as ``argument parsing,''
+``serialization,'' or ``encryption.''
+
+This kind of high-level labeling is often performed implicitly by human
+reverse engineers as they analyze a program. One may glance over the
+functions in a binary to get a rough idea of their purpose before
+deciding where to spend one's (limited) analysis time. We propose to
+build a system that can quickly provide these kinds of high-level
+semantic summaries \emph{automatically}.
+
+To accomplish this, I propose to look to the area of streaming
+analytics. My own previous work~\cite{dolangavitt:2013:tzb} has
+demonstrated that viewing a program execution as a large number of
+streaming memory accesses, combined with an analysis of the contents of
+these streams, can be a powerful tool for program explication. This
+notion can be extended beyond memory accesses to other artifacts of
+computation, effectively treating an execution as a generator for
+streams of observations of the program's state. By collecting statistics
+on these streams and comparing them to a corpus of labeled exemplars, I 
+will be able to classify execution fragments according to high-level
+semantic descriptions.
+
+\subsection{Programs as Streaming Data}
+
+To perform a high-level labeling, I need to generate a set of
+observations about the behavior of portions of program execution both in
+the training corpus and for new executions we wish to understand. In
+previous work~\cite{dolangavitt:2013:tzb}, this took the form of streams
+of data from memory accesses. In the proposed system, we will augment
+these with a number of other observables, for example:
+
+\begin{itemize}
+    \item System, API, and function calls
+    \item CPU register contents over time
+    \item Assembly instruction mnemonics in a sliding window over the
+    instruction stream
+    \item Externally visible outputs such as disk, network, and IPC
+\end{itemize}
+
+Each of these can be combined with its context within the program (e.g.,
+the program, module, or calling context) to break up these data streams.
+The key idea is that these sub-streams will now contain data that is of
+the same semantic type, as each is generated from within the same part
+of the program. Taken together, the content of these streams should thus
+form a fingerprint for the code's functionality. Some streams may be
+noisier than others, but creating robust classifiers from noisy signals
+is a well-studied problem in machine learning.
+
+\subsection{Creating a Labeled Corpus}
+
+A natural approach to creating a labeled corpus of program functionality
+is to manually examine many programs and assign meaningful labels to
+their various components. Aside from the daunting amount of work this
+would require to build a reasonably-sized corpus, this strategy is also
+inherently underspecified. Any labeling effort would need to decide
+\emph{a priori} on a consistent set of labels, but the diversity of
+real-world program behaviors means any such label set would likely be
+incomplete.
+
+Instead I propose to generate the corpus from precisely the semantic
+information that is usually removed during compilation: comments and
+variable names. Naturally, these labels will not be as precise as those
+a human would create, but in aggregate they should provide valuable
+information on the meaning of the code in question.
+
+Thus, to create a corpus one can start by compiling a large number of
+open source programs with debugging information. The resulting binary
+code can then be given labels derived from the comments and variable
+names. Finally, the programs can then be run in a dynamic analysis
+system such as PANDA~\cite{panda} to create the streams of observations
+that will be used in classification.
+
+\subsection{Classifying Execution Fragments}
+
+Given a new execution, we can now generate the same streams of
+observations as for the exemplar corpus. These observations can then be
+matched against the models generated in training to find those that most
+closely match. The output is a labeled instruction stream that assigns
+\emph{meaning} to execution fragments.
+
+This problem can also be seen as a statistical machine translation
+problem with three parallel corpora: the comments and variable names in
+the code, the binary code produced from compilation, and the streams of
+observations produced by running the code. The first two are explicitly
+related via the source code to binary mapping produced by compilation.
+The latter two can be seen as implicitly related by some noisy channel.
+Using techniques from machine translation, we can find a mapping between
+the first and third, giving us the desired semantic labeling.
+
+\section{Summary and Timeline}
+
+
+
+\bibliographystyle{abbrv}
+\bibliography{related}
 
 \end{document}
