@@ -31,14 +31,56 @@ execution traces.
 
 \section {Introduction}
 
+Today the world depends a dizzying variety of highly complex systems
+that are poorly understood, even to their creators. In computer security
+we are tasked with finding ways to defend existing systems, and to
+create new systems that resist ever-changing attacks from highly capable
+adversaries such as organized crime and nation states. To accomplish the
+former, we need ways of analyzing and understanding the security
+properties of large, complex systems as they exist today. Armed with
+such an understanding, we can better defend the current generation of
+systems and use it to inform new designs.
 
+Unfortunately, existing systems are hardly amenable to analysis. Many
+important pieces of software are available only in binary form, and lack
+debugging symbols or other aids to analysis. In addition, some security
+properties of a program may depend on precise implementation details of
+the operating system or its runtime libraries. Thus, effective analyses
+of real-world systems must be able to gain an understanding of whole
+systems of interacting programs without relying on the availability of
+source code. This understanding is typically hard-won: human reverse
+engineers pore over disassemblies or run programs in debuggers and
+laboriously reconstruct the internal principles on which programs run.
+
+Many traditional approaches to systems security have emphasized
+\emph{static analysis}---techniques that derive interesting properties
+of programs without having to actually run them. These techniques are
+attractive because they often come with soundness guarantees, allowing
+one to make definitive statements about certain security properties of a
+piece of software. Unfortunately, static analyses typically have
+difficulty dealing with binary software (although some systems have made
+progress on this problem~\cite{song:2008:bitblaze,Brumley:2011:bap}) and
+are difficult to scale to entire programs (much less entire systems of
+interacting programs).
+
+In this thesis, I propose to instead look at \emph{dynamic
+analysis}---program analyses that run the software and collect
+information about its behavior \emph{in vivo}---to uncover
+security-relevant information about whole systems, without access to
+source code or debugging information. In previous work, I have shown
+that careful application of dynamic analysis can uncover undocumented
+assumptions and elucidate important security properties of large,
+closed-source systems such as Windows. I will also extend this work to
+examine how dynamic analysis can be used to automatically provide
+high-level semantic labels for software behavior, a task which has
+applications to both reverse engineering and malware analysis.
 
 \subsection{Thesis Statement}
 
-The goal of this thesis is to better understand how large, real-world
-systems can be protected without cooperation from code providers. I hope
-to investigate how dynamic analysis can be used to efficiently
-understand the behavior and security properties of such systems.
+\emph{Dynamic analysis can be used to efficiently understand the
+    behavior and security properties of large, real-world systems
+    without cooperation from code providers, and this understanding can
+    be used to provide novel defenses.}
 
 \section {Completed Work}
 
@@ -53,44 +95,47 @@ strategy only works if the invariants are \emph{enforced}---if an
 attacker can manipulate the data in an object, they can hide it from
 scans and evade detection. Indeed, I found that the invariants that
 were checked by memory scanners were rarely enforced by the kernel,
-presenting many opportunities for attackers to hide. To correct this
-situation I created a novel dynamic analysis that combines
-\emph{profiling} (checking how often each field in a structure was
-accessed by the operating system) with \emph{fuzzing} (actively making
-changes to the structure fields and observing the OS's response) to find
-out which fields are strictly checked by the OS. Finally, we generated
-new, \emph{robust} signatures by finding invariants on precisely those
-fields that were most strictly checked by the kernel itself, and that an
-attacker would have the most difficulty in tampering with. Our robust
-signatures effectively resist evasion even by powerful adversaries that
-have the ability to manipulate dynamic kernel data and make it
-impossible for attackers to hide objects from memory scans.
+presenting many opportunities for attackers to hide.
 
-I have also made significant contributions to the field of
-\emph{virtualization security}. In this area, the goal is to
-harden systems against attack by separating security software from the
-systems they are meant to protect by placing them into separate virtual
-machines (typically referred to as the \emph{security} and \emph{guest}
-virtual machines, respectively), with a small and verifiable hypervisor
-ensuring the isolation between the two. Thus, even if the operating
-system running inside the VM is compromised, hypervisor-level monitoring
-will remain secure and will be able to respond to the attack
-effectively. A key challenge in this area is the \emph{semantic gap}:
-although the separation between the two virtual machines means that
-tools in the security VM are resistant to tampering, visibility
-into the guest VM is greatly reduced. Virtualization security tools are
-presented with a low-level view of the guest VM that is typically
-limited to the contents of RAM and the CPU registers, but to make
-effective security decisions they need information about high-level OS
-concepts such as processes, threads, files, and network connections.
-Thus, virtualization security tools must painstakingly reconstruct
-a high-level view from this low-level data, which requires deep
-understanding of the algorithms and data structures of the OS and
-applications running in the guest VM. Worse, in the case of
-closed-source operating systems this understanding can only be derived
-by time-consuming and expensive manual reverse engineering of the binary
-code. The semantic gap therefore poses a significant obstacle to the
-development and deployment of virtualization security.
+To correct this situation I created a novel dynamic analysis that
+combines \emph{profiling} (checking how often each field in a structure
+was accessed by the operating system) with \emph{fuzzing} (actively
+making changes to the structure fields and observing the OS's response)
+to find out which fields are strictly checked by the OS. Finally, we
+generated new, \emph{robust} signatures by finding invariants on
+precisely those fields that were most strictly checked by the kernel
+itself, and that an attacker would have the most difficulty in tampering
+with. Our robust signatures effectively resist evasion even by powerful
+adversaries that have the ability to manipulate dynamic kernel data and
+make it impossible for attackers to hide objects from memory scans.
+
+In previous work I have also used dynamic analysis to make progress on
+open problems in \emph{virtualization security}. In this area, the goal
+is to harden systems against attack by separating security software from
+the systems they are meant to protect by placing them into separate
+virtual machines (typically referred to as the \emph{security} and
+\emph{guest} virtual machines, respectively), with a small and
+verifiable hypervisor ensuring the isolation between the two. Thus, even
+if the operating system running inside the VM is compromised,
+hypervisor-level monitoring will remain secure and will be able to
+respond to the attack effectively.
+
+A key challenge in this area is the \emph{semantic gap}: although the
+separation between the two virtual machines means that tools in the
+security VM are resistant to tampering, visibility into the guest VM is
+greatly reduced. Virtualization security tools are presented with a
+low-level view of the guest VM that is typically limited to the contents
+of RAM and the CPU registers, but to make effective security decisions
+they need information about high-level OS concepts such as processes,
+threads, files, and network connections.  Thus, virtualization security
+tools must painstakingly reconstruct a high-level view from this
+low-level data, which requires deep understanding of the algorithms and
+data structures of the OS and applications running in the guest VM.
+Worse, in the case of closed-source operating systems this understanding
+can only be derived by time-consuming and expensive manual reverse
+engineering of the binary code. The semantic gap therefore poses a
+significant obstacle to the development and deployment of virtualization
+security.
 
 In \textbf{Virtuoso: Narrowing the Semantic Gap in Virtual Machine
 Introspection}~\cite{dolangavitt2011virtuoso}, I made the first
@@ -230,7 +275,19 @@ the first and third, giving us the desired semantic labeling.
 
 \section{Summary and Timeline}
 
-
+\textbf{Robust Signatures for Kernel Data Structures} was published at
+ACM CCS in 2009. \textbf{Virtuoso: Narrowing the Semantic Gap in Virtual
+Machine Introspection} was published at the IEEE Symposium on Security
+and Privacy in 2011, and was a finalist for the AT\&T Best Applied
+Security Paper Award in the same year. \textbf{Tappan Zee (North)
+Bridge: Mining Memory Accesses for Introspection} was published at ACM
+CCS in 2013. I am currently in the process of generating a set of
+representative execution traces from the Linux kernel for the execution
+summary portion of this thesis, which I can then use to evaluate
+different sets of features and matching algorithms. I expect to have a
+paper ready for submission to NDSS in August (or even sooner, in all
+probability---but there are no major conference deadlines between May
+and August).
 
 \bibliographystyle{abbrv}
 \bibliography{related}
